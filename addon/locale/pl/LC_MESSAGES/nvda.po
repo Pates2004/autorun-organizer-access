@@ -1,0 +1,130 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Autorun Organizer Access 1.1.0\n"
+"Report-Msgid-Bugs-To: https://github.com/Pates2004/autorun-organizer-access/issues\n"
+"POT-Creation-Date: 2026-08-23 00:00+0200\n"
+"PO-Revision-Date: 2026-08-23 00:00+0200\n"
+"Last-Translator: Pates2004\n"
+"Language-Team: Polish\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Important"
+msgstr "Najważniejsze"
+
+msgid "All"
+msgstr "Wszystkie"
+
+msgid "Custom"
+msgstr "Niestandardowe"
+
+msgid "Boot time"
+msgstr "Czas uruchamiania"
+
+msgid "Application"
+msgstr "Aplikacja"
+
+msgid "Notifications about new startup items"
+msgstr "Powiadomienia o nowych elementach autostartu"
+
+msgid "Selected startup item state"
+msgstr "Stan wybranego elementu autostartu"
+
+msgid "Toggled. The state will be applied by Autorun Organizer."
+msgstr "Przełączono. Stan zostanie zastosowany przez Autorun Organizer."
+
+msgid "Unable to activate the toggle."
+msgstr "Nie udało się uaktywnić przełącznika."
+
+msgid "{label}, {position} of {count}"
+msgstr "{label}, {position} z {count}"
+
+msgid "Selected: {label}"
+msgstr "Wybrano: {label}"
+
+msgid "Unable to select the item."
+msgstr "Nie udało się wybrać elementu."
+
+msgid "View filter"
+msgstr "Filtr widoku"
+
+msgid "Details tab"
+msgstr "Zakładka szczegółów"
+
+msgid "Search startup items"
+msgstr "Szukaj elementu autostartu"
+
+msgid "Startup items"
+msgstr "Elementy autostartu"
+
+msgid "This control is not currently available in the application window."
+msgstr "Ta kontrolka nie jest teraz dostępna w oknie programu."
+
+msgid "Unable to activate the control."
+msgstr "Nie udało się uaktywnić kontrolki."
+
+msgid "NVDA navigator object set"
+msgstr "Ustawiono nawigator NVDA"
+
+msgid "Unable to move focus."
+msgstr "Nie udało się przenieść fokusu."
+
+msgid "View: {label}"
+msgstr "Widok: {label}"
+
+msgid "Tab: {label}"
+msgstr "Zakładka: {label}"
+
+msgid "Moves focus to the startup item list"
+msgstr "Przenosi fokus do listy elementów autostartu"
+
+msgid "The startup item list was not found."
+msgstr "Nie znaleziono listy elementów autostartu."
+
+msgid "Moves focus to the search field"
+msgstr "Przenosi fokus do pola wyszukiwania"
+
+msgid "The search field was not found."
+msgstr "Nie znaleziono pola wyszukiwania."
+
+msgid "Selects the Important view"
+msgstr "Wybiera widok Najważniejsze"
+
+msgid "Selects the All view"
+msgstr "Wybiera widok Wszystkie"
+
+msgid "Selects the Custom view"
+msgstr "Wybiera widok Niestandardowe"
+
+msgid "Toggles application notifications"
+msgstr "Włącza lub wyłącza powiadomienia programu"
+
+msgid "Notification setting toggled."
+msgstr "Przełączono ustawienie powiadomień."
+
+msgid "Enables or disables the selected startup item"
+msgstr "Włącza lub wyłącza wybrany element autostartu"
+
+msgid "Selected startup item state toggled."
+msgstr "Przełączono stan wybranego elementu autostartu."
+
+msgid "Opens the Boot time tab"
+msgstr "Otwiera zakładkę Czas uruchamiania"
+
+msgid "Opens the Application tab"
+msgstr "Otwiera zakładkę Aplikacja"
+
+msgid "Reads available details for the selected item"
+msgstr "Odczytuje dostępne szczegóły wybranego elementu"
+
+msgid "No details are available for the current item."
+msgstr "Brak dostępnych szczegółów dla bieżącego elementu."
+
+msgid "Reports Autorun Organizer Access commands"
+msgstr "Podaje skróty dodatku Autorun Organizer Access"
+
+msgid "Add-on commands: NVDA plus Alt plus L, list; F, search; 1, 2, 3, view filters; S, toggle selected item; N, notifications; A, application details; B, boot time; D, read details."
+msgstr "Skróty dodatku: NVDA plus Alt plus L, lista; F, wyszukiwanie; 1, 2, 3, filtry widoku; S, przełączenie wybranego wpisu; N, powiadomienia; A, szczegóły aplikacji; B, czas uruchamiania; D, odczyt szczegółów."
