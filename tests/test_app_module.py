@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 MODULE_PATH = Path(__file__).parents[1] / "addon" / "appModules" / "autorunorganizer.py"
+SHARED_PATH = Path(__file__).parents[1] / "addon" / "autorunOrganizerAccessShared.py"
 
 
 class Role(Enum):
@@ -52,7 +53,13 @@ FOCUS = {"foreground": None, "focus": None, "navigator": None}
 
 
 def load_module():
+	sharedSpec = importlib.util.spec_from_file_location("autorun_shared_for_app_tests", SHARED_PATH)
+	shared = importlib.util.module_from_spec(sharedSpec)
+	sharedSpec.loader.exec_module(shared)
 	stubs = {
+		"addonHandler": types.SimpleNamespace(
+			getCodeAddon=lambda: types.SimpleNamespace(loadModule=lambda name: shared),
+		),
 		"appModuleHandler": types.SimpleNamespace(AppModule=BaseAppModule),
 		"api": types.SimpleNamespace(
 			getForegroundObject=lambda: FOCUS["foreground"],
@@ -128,9 +135,9 @@ class AppModuleTests(unittest.TestCase):
 
 	def test_sciter_overlays_cover_all_classic_6x_hosts(self):
 		cases = {
-			"Notifications": self.module._SciterToggle,
-			"ToggleSwitcher2Holder": self.module._SciterToggle,
-			"Measure each system load time": self.module._SciterToggle,
+			"Notifications": self.module._SciterActionButton,
+			"ToggleSwitcher2Holder": self.module._SciterActionButton,
+			"Measure each system load time": self.module._SciterActionButton,
 			"TopButtonsBarPanel": self.module._TopFilterSelector,
 			"InfoPanelButtonsBarPanel": self.module._DetailTabSelector,
 		}
@@ -141,6 +148,16 @@ class AppModuleTests(unittest.TestCase):
 				obj = DummyObject("TSciterHostWindow", parent=parent)
 				self.app.chooseNVDAObjectOverlayClasses(obj, classes)
 				self.assertEqual(classes[0], expected)
+
+	def test_sciter_switch_is_an_action_button_without_a_false_checked_state(self):
+		parent = DummyObject("TPanel", name="ToggleSwitcher2Holder")
+		obj = DummyObject("TSciterHostWindow", parent=parent)
+		classes = []
+		self.app.chooseNVDAObjectOverlayClasses(obj, classes)
+		overlay = object.__new__(classes[0])
+		overlay.parent = parent
+		self.assertEqual(overlay._get_role(), Role.BUTTON)
+		self.assertEqual(overlay._get_name(), "Enable or disable the selected startup item")
 
 	def test_clickable_labels_and_group_buttons_are_keyboard_operable(self):
 		cases = {

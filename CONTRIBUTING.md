@@ -10,4 +10,4 @@ When reporting a problem, include:
 - the exact control and command involved;
 - relevant NVDA log messages, with personal paths or startup item names removed when necessary.
 
-Run `test.ps1` before submitting a pull request. The add-on and its user-facing messages are English-only.
+Run `test.ps1` before submitting a pull request. Keep English and Polish messages, documentation, and tests synchronized.

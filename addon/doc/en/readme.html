@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>Autorun Organizer Access 1.2.0</title>
+	<title>Autorun Organizer Access 1.3.0</title>
 </head>
 <body>
-	<h1>Autorun Organizer Access 1.2.0</h1>
-	<p>This English-only add-on provides complete keyboard access to the classic Autorun Organizer 6.x interface. It has been directly tested with Autorun Organizer 6.32 and rejects the redesigned 7.x interface.</p>
+	<h1>Autorun Organizer Access 1.3.0</h1>
+	<p>This add-on provides complete keyboard access to the classic Autorun Organizer 6.x interface. It has been directly tested with Autorun Organizer 6.32 and rejects the redesigned 7.x interface.</p>
+	<h2>Language</h2>
+	<p>Open <strong>NVDA Settings → Autorun Organizer Access</strong>. Choose the Windows display language (default), English, Polish, or the Autorun Organizer language. Polish Windows or an active Polish application translation selects Polish; unsupported languages fall back to English.</p>
+	<p>The setting controls add-on messages and application captions spoken by NVDA or shown in braille. It cannot change text drawn visually inside Autorun Organizer. Reopen an already displayed application menu or dialog after changing the setting.</p>
+	<h2>The startup-item action</h2>
+	<p>Autorun Organizer's Sciter switch does not expose its current state. It is therefore presented as the action button <strong>Enable or disable the selected startup item</strong>, not as a check box with the false state “unchecked”. After activation, NVDA explains that the resulting state is unavailable.</p>
 	<h2>Commands</h2>
-	<p>All 22 commands are always visible under NVDA menu → Preferences → Input Gestures → Autorun Organizer Access. Their assigned keys are active only while Autorun Organizer 6.x has focus.</p>
+	<p>All 22 commands are visible under NVDA menu → Preferences → Input Gestures → Autorun Organizer Access. Assigned keys are active only while Autorun Organizer 6.x has focus.</p>
 	<ul>
 		<li>NVDA+Alt+L: focus the startup item list.</li>
 		<li>NVDA+Alt+F: focus search.</li>
@@ -26,10 +31,10 @@
 		<li>NVDA+Alt+U: open Undo changes.</li>
 		<li>NVDA+Alt+H: report the default commands.</li>
 	</ul>
-	<p>The following commands have no default gesture and can be assigned in Input Gestures: open reviews, toggle the interface theme, open Background functions, focus Reboot and measure, and focus the disable and delay frequency button.</p>
-	<h2>Keyboard access</h2>
-	<p>The selected-item command opens Autorun Organizer's standard context menu, which exposes all actions supported for that entry. Enter and Space activate virtual switches, clickable labels, startup-type group buttons, and icon controls. Arrow keys select options on the filter and details-tab virtual controls.</p>
-	<p>Sciter elements are activated by positions relative to their current control rectangles rather than fixed screen coordinates. Only 6.32 has been directly regression-tested, but all classic 6.x product versions are accepted.</p>
+	<p>Five additional commands have no default gesture: reviews, interface theme, Background functions, Reboot and measure, and disable/delay frequency.</p>
+	<h2>Limitations</h2>
+	<p>Enter and Space activate virtual action buttons, clickable labels, group buttons, and icon controls. Arrow keys select options on virtual filters and detail tabs. Sciter elements are activated by positions relative to their current control rectangles.</p>
+	<p>The add-on can translate only text that the application exposes through UI Automation or MSAA. Text painted solely inside Sciter, unusual dynamic server content, the visible interface, and NVDA's own role words remain outside its control.</p>
 	<p>Source code and issue tracker: <a href="https://github.com/Pates2004/autorun-organizer-access">GitHub repository</a>.</p>
 </body>
 </html>

@@ -18,6 +18,9 @@ class BaseGlobalPlugin:
 	def getScript(self, gesture):
 		return getattr(self, f"script_{gesture.scriptName}", None)
 
+	def terminate(self):
+		pass
+
 
 def script(*, description="", category=None, gesture=None, gestures=None, **kwargs):
 	def decorate(function):
@@ -34,10 +37,40 @@ def script(*, description="", category=None, gesture=None, gestures=None, **kwar
 
 
 def load_module():
+	settingsPanels = []
+	shared = types.SimpleNamespace(
+		CONFIG_SECTION="autorunOrganizerAccess",
+		LANGUAGE_MODES=("system", "en", "pl", "application"),
+		registerConfig=lambda: None,
+		resolveLanguage=lambda: "en",
+		getConfiguredMode=lambda: "system",
+		languageModeLabels=lambda language=None: (
+			"Follow the Windows display language (default)",
+			"English",
+			"Polish",
+			"Follow the Autorun Organizer language",
+		),
+		tr=lambda text, language=None, **kwargs: text.format(**kwargs) if kwargs else text,
+	)
+	configConf = {
+		"autorunOrganizerAccess": {"language": "system"},
+	}
 	stubs = {
+		"addonHandler": types.SimpleNamespace(
+			getCodeAddon=lambda: types.SimpleNamespace(loadModule=lambda name: shared),
+		),
 		"api": types.SimpleNamespace(getFocusObject=lambda: FOCUS["object"]),
+		"config": types.SimpleNamespace(conf=configConf),
 		"globalPluginHandler": types.SimpleNamespace(GlobalPlugin=BaseGlobalPlugin),
+		"gui": types.SimpleNamespace(
+			settingsDialogs=types.SimpleNamespace(
+				SettingsPanel=object,
+				NVDASettingsDialog=types.SimpleNamespace(categoryClasses=settingsPanels),
+			),
+			guiHelper=types.SimpleNamespace(BoxSizerHelper=object),
+		),
 		"ui": types.SimpleNamespace(message=MESSAGES.append),
+		"wx": types.SimpleNamespace(Choice=object, StaticText=object),
 		"scriptHandler": types.SimpleNamespace(script=script),
 	}
 	for name, module in stubs.items():
@@ -45,6 +78,7 @@ def load_module():
 	spec = importlib.util.spec_from_file_location("autorun_global_under_test", MODULE_PATH)
 	module = importlib.util.module_from_spec(spec)
 	spec.loader.exec_module(module)
+	module._testSettingsPanels = settingsPanels
 	return module
 
 
@@ -108,6 +142,9 @@ class GlobalPluginTests(unittest.TestCase):
 				gestures.extend(getattr(command, "gestures", []))
 		self.assertEqual(len(gestures), len(set(gestures)))
 		self.assertEqual(self.module.GlobalPlugin.scriptCategory, "Autorun Organizer Access")
+
+	def test_language_panel_is_registered_in_nvda_settings(self):
+		self.assertIn(self.module.AutorunOrganizerAccessSettingsPanel, self.module._testSettingsPanels)
 
 	def test_commands_do_not_shadow_keys_outside_autorun_organizer_6x(self):
 		FOCUS["object"] = types.SimpleNamespace(

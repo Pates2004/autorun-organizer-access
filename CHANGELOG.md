@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0 — 2026-08-24
+
+- Added a dedicated **Autorun Organizer Access** category to NVDA Settings.
+- Added an independent spoken/braille language setting: follow Windows (default), English, Polish, or follow Autorun Organizer. Unsupported Windows and application languages fall back to English.
+- Added Polish add-on messages, Input Gestures descriptions, documentation, and extensive translation of application captions exposed to NVDA through UI Automation or MSAA.
+- Replaced inaccessible Sciter check boxes with accurately named action buttons. Autorun Organizer 6.x does not expose their current state, so NVDA no longer announces the misleading default state "unchecked".
+- Added bidirectional accessible-name translation so changing between English and Polish does not leave stale translated captions.
+
 ## 1.2.0 — 2026-08-24
 
 - Commands are now provided by an application-scoped global plug-in, so all of them are always visible in NVDA's Input Gestures dialog while their keys remain inactive outside Autorun Organizer 6.x.

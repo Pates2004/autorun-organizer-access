@@ -55,9 +55,12 @@ try {
 	$entries = @($archive.Entries.FullName -replace '\\', '/')
 	foreach ($required in @(
 		'manifest.ini',
+		'autorunOrganizerAccessShared.py',
 		'appModules/autorunorganizer.py',
 		'globalPlugins/autorunOrganizerAccess.py',
-		'doc/en/readme.html'
+		'doc/en/readme.html',
+		'doc/pl/readme.html',
+		'locale/pl/manifest.ini'
 	)) {
 		if ($required -notin $entries) { throw "Package entry is missing: $required" }
 	}
