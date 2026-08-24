@@ -2,26 +2,34 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>Autorun Organizer Access 1.1.0</title>
+	<title>Autorun Organizer Access 1.2.0</title>
 </head>
 <body>
-	<h1>Autorun Organizer Access 1.1.0</h1>
-	<p>This add-on labels inaccessible Sciter controls and adds direct keyboard commands for the classic Autorun Organizer 6.x interface.</p>
+	<h1>Autorun Organizer Access 1.2.0</h1>
+	<p>This English-only add-on provides complete keyboard access to the classic Autorun Organizer 6.x interface. It has been directly tested with Autorun Organizer 6.32 and rejects the redesigned 7.x interface.</p>
 	<h2>Commands</h2>
-	<p>Every command below has a description and is registered in the “Autorun Organizer” category. Its gesture can be changed or removed in NVDA menu → Preferences → Input Gestures → Autorun Organizer, without editing the add-on files.</p>
+	<p>All 22 commands are always visible under NVDA menu → Preferences → Input Gestures → Autorun Organizer Access. Their assigned keys are active only while Autorun Organizer 6.x has focus.</p>
 	<ul>
 		<li>NVDA+Alt+L: focus the startup item list.</li>
 		<li>NVDA+Alt+F: focus search.</li>
 		<li>NVDA+Alt+1, 2, or 3: Important, All, or Custom view.</li>
-		<li>NVDA+Alt+S: toggle the selected startup item.</li>
-		<li>NVDA+Alt+N: toggle Autorun Organizer notifications.</li>
-		<li>NVDA+Alt+A: Application details tab.</li>
-		<li>NVDA+Alt+B: Boot time tab.</li>
-		<li>NVDA+Alt+D: read available details for the selected item.</li>
-		<li>NVDA+Alt+H: report add-on commands.</li>
+		<li>NVDA+Alt+4: open the startup locations menu.</li>
+		<li>NVDA+Alt+S: enable or disable the selected startup item.</li>
+		<li>NVDA+Alt+C: open all commands for the selected startup item.</li>
+		<li>NVDA+Alt+N: toggle notifications about new startup items.</li>
+		<li>NVDA+Alt+Shift+N: open the notification center.</li>
+		<li>NVDA+Alt+A: open the Application tab.</li>
+		<li>NVDA+Alt+B: open the Boot time tab.</li>
+		<li>NVDA+Alt+Shift+B: toggle measuring every system load time.</li>
+		<li>NVDA+Alt+D: read the selected item and current-tab details.</li>
+		<li>NVDA+Alt+M: open Settings and commands.</li>
+		<li>NVDA+Alt+U: open Undo changes.</li>
+		<li>NVDA+Alt+H: report the default commands.</li>
 	</ul>
-	<p>On a filter or detail-tab Sciter panel, use the arrow keys to choose an item and Enter or Space to activate it. Enter and Space also activate Sciter toggles.</p>
-	<p>Tested with Autorun Organizer 6.32 and NVDA 2026.1.1. Version 7.0 uses a redesigned interface and is outside this add-on's scope.</p>
+	<p>The following commands have no default gesture and can be assigned in Input Gestures: open reviews, toggle the interface theme, open Background functions, focus Reboot and measure, and focus the disable and delay frequency button.</p>
+	<h2>Keyboard access</h2>
+	<p>The selected-item command opens Autorun Organizer's standard context menu, which exposes all actions supported for that entry. Enter and Space activate virtual switches, clickable labels, startup-type group buttons, and icon controls. Arrow keys select options on the filter and details-tab virtual controls.</p>
+	<p>Sciter elements are activated by positions relative to their current control rectangles rather than fixed screen coordinates. Only 6.32 has been directly regression-tested, but all classic 6.x product versions are accepted.</p>
 	<p>Source code and issue tracker: <a href="https://github.com/Pates2004/autorun-organizer-access">GitHub repository</a>.</p>
 </body>
 </html>

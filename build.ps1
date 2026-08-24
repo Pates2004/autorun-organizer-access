@@ -13,17 +13,6 @@ if (-not $versionMatch.Success) {
 }
 $version = $versionMatch.Groups[1].Value.Trim()
 
-$poPath = Join-Path $addonDirectory 'locale\pl\LC_MESSAGES\nvda.po'
-$moPath = Join-Path $addonDirectory 'locale\pl\LC_MESSAGES\nvda.mo'
-$msgfmt = Get-Command msgfmt.exe -ErrorAction SilentlyContinue
-if ($null -ne $msgfmt) {
-	& $msgfmt.Source --check --output-file=$moPath $poPath
-	if ($LASTEXITCODE -ne 0) { throw "msgfmt returned exit code $LASTEXITCODE." }
-}
-elseif (-not (Test-Path -LiteralPath $moPath -PathType Leaf)) {
-	throw 'nvda.mo is missing and msgfmt.exe is not available to compile it.'
-}
-
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $outputPath = Join-Path $OutputDirectory "autorunOrganizerAccess-$version.nvda-addon"
 if (Test-Path -LiteralPath $outputPath) {
@@ -67,10 +56,8 @@ try {
 	foreach ($required in @(
 		'manifest.ini',
 		'appModules/autorunorganizer.py',
-		'doc/en/readme.html',
-		'doc/pl/readme.html',
-		'locale/pl/manifest.ini',
-		'locale/pl/LC_MESSAGES/nvda.mo'
+		'globalPlugins/autorunOrganizerAccess.py',
+		'doc/en/readme.html'
 	)) {
 		if ($required -notin $entries) { throw "Package entry is missing: $required" }
 	}

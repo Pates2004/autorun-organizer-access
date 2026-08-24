@@ -1,7 +1,6 @@
-"""Unit tests for Autorun Organizer Access."""
+"""Unit tests for the Autorun Organizer 6.x app module."""
 
 import importlib.util
-import builtins
 import sys
 import types
 import unittest
@@ -18,6 +17,7 @@ class Role(Enum):
 	LIST = auto()
 	LISTITEM = auto()
 	BUTTON = auto()
+	RADIOBUTTON = auto()
 
 
 class UIA:
@@ -25,6 +25,9 @@ class UIA:
 
 
 class BaseAppModule:
+	appName = "autorunorganizer"
+	productVersion = "6.32"
+
 	def __init__(self, *args, **kwargs):
 		pass
 
@@ -37,28 +40,36 @@ class DummyLog:
 		pass
 
 
-def script(**metadata):
-	def decorate(function):
-		function.scriptMetadata = metadata
-		return function
-	return decorate
+class DummyKeyboardGesture:
+	sent = []
+
+	@classmethod
+	def fromName(cls, name):
+		return types.SimpleNamespace(send=lambda: cls.sent.append(name))
+
+
+FOCUS = {"foreground": None, "focus": None, "navigator": None}
 
 
 def load_module():
 	stubs = {
-		"addonHandler": types.SimpleNamespace(initTranslation=lambda: setattr(builtins, "_", lambda text: text)),
 		"appModuleHandler": types.SimpleNamespace(AppModule=BaseAppModule),
-		"api": types.SimpleNamespace(getForegroundObject=lambda: None, getFocusObject=lambda: None),
+		"api": types.SimpleNamespace(
+			getForegroundObject=lambda: FOCUS["foreground"],
+			getFocusObject=lambda: FOCUS["focus"],
+			setNavigatorObject=lambda obj: FOCUS.__setitem__("navigator", obj),
+		),
 		"controlTypes": types.SimpleNamespace(Role=Role),
 		"core": types.SimpleNamespace(callLater=lambda delay, function, *args: function(*args)),
+		"keyboardHandler": types.SimpleNamespace(KeyboardInputGesture=DummyKeyboardGesture),
 		"mouseHandler": types.SimpleNamespace(doPrimaryClick=lambda: None),
 		"ui": types.SimpleNamespace(message=lambda text: None),
 		"winUser": types.SimpleNamespace(
 			getCursorPos=lambda: (10, 20),
 			setCursorPos=lambda x, y: None,
+			isWindowVisible=lambda hwnd: True,
 		),
 		"logHandler": types.SimpleNamespace(log=DummyLog()),
-		"scriptHandler": types.SimpleNamespace(script=script),
 	}
 	for name, module in stubs.items():
 		sys.modules[name] = module
@@ -76,14 +87,31 @@ def load_module():
 class DummyElement:
 	def __init__(self, class_name):
 		self.CurrentClassName = class_name
+		self.CurrentIsOffscreen = False
+		self.CurrentNativeWindowHandle = 0
 
 
 class DummyObject(UIA):
-	def __init__(self, class_name, parent_name="", name="", role=None):
+	def __init__(
+		self,
+		class_name,
+		*,
+		parent=None,
+		name="",
+		role=None,
+		location=(0, 0, 100, 30),
+		children=None,
+	):
 		self.UIAElement = DummyElement(class_name)
-		self.parent = types.SimpleNamespace(name=parent_name)
+		self.parent = parent or types.SimpleNamespace(name="")
 		self.name = name
 		self.role = role
+		self.location = location
+		self.children = list(children or [])
+		self.focused = False
+
+	def setFocus(self):
+		self.focused = True
 
 
 class AppModuleTests(unittest.TestCase):
@@ -95,32 +123,91 @@ class AppModuleTests(unittest.TestCase):
 		self.app = object.__new__(self.module.AppModule)
 		self.app._topFilterIndex = 0
 		self.app._detailTabIndex = 1
+		DummyKeyboardGesture.sent.clear()
+		FOCUS.update(foreground=None, focus=None, navigator=None)
 
-	def test_sciter_overlays_are_selected_by_uia_and_parent_class(self):
+	def test_sciter_overlays_cover_all_classic_6x_hosts(self):
 		cases = {
 			"Notifications": self.module._SciterToggle,
 			"ToggleSwitcher2Holder": self.module._SciterToggle,
+			"Measure each system load time": self.module._SciterToggle,
 			"TopButtonsBarPanel": self.module._TopFilterSelector,
 			"InfoPanelButtonsBarPanel": self.module._DetailTabSelector,
 		}
 		for parent_name, expected in cases.items():
 			with self.subTest(parent_name=parent_name):
 				classes = []
-				obj = DummyObject("TSciterHostWindow", parent_name=parent_name)
+				parent = DummyObject("TPanel", name=parent_name)
+				obj = DummyObject("TSciterHostWindow", parent=parent)
 				self.app.chooseNVDAObjectOverlayClasses(obj, classes)
 				self.assertEqual(classes[0], expected)
 
-	def test_shared_hwnd_class_does_not_affect_detection(self):
-		classes = []
-		obj = DummyObject("TButtonedEdit", name="")
-		obj.windowClassName = "TAutorunOrganizerMainForm"
-		self.app.event_NVDAObject_init(obj)
-		self.assertEqual(obj.name, "Search startup items")
+	def test_clickable_labels_and_group_buttons_are_keyboard_operable(self):
+		cases = {
+			"TClickableLabelControl": self.module._NativeClickableLabel,
+			"TGroupButton": self.module._GroupButton,
+		}
+		for class_name, expected in cases.items():
+			with self.subTest(class_name=class_name):
+				classes = []
+				self.app.chooseNVDAObjectOverlayClasses(DummyObject(class_name), classes)
+				self.assertEqual(classes[0], expected)
 
-	def test_list_is_named(self):
-		obj = DummyObject("TListView", name="", role=Role.LIST)
+	def test_top_icons_and_status_actions_receive_stable_names(self):
+		top_parent = DummyObject("TStackPanel", location=(100, 0, 200, 40))
+		top_cases = (
+			(DummyObject("TPanel", parent=top_parent, location=(240, 5, 27, 30)), "Notification center"),
+			(DummyObject("TPanel", parent=top_parent, location=(272, 5, 27, 30)), "Settings and commands"),
+		)
+		status_parent = DummyObject("TStatusBar", location=(0, 0, 735, 23))
+		status_cases = (
+			(DummyObject("TPanel", parent=status_parent, location=(422, 1, 20, 19)), "Interface theme"),
+			(DummyObject("TPanel", parent=status_parent, location=(447, 1, 20, 19)), "Background functions"),
+			(DummyObject("TPanel", parent=status_parent, location=(472, 1, 118, 19)), "Reviews"),
+			(DummyObject("TPanel", parent=status_parent, location=(595, 1, 128, 19)), "Undo changes"),
+		)
+		for obj, name in top_cases + status_cases:
+			with self.subTest(name=name):
+				classes = []
+				self.app.chooseNVDAObjectOverlayClasses(obj, classes)
+				overlay = object.__new__(classes[0])
+				overlay.UIAElement = obj.UIAElement
+				overlay.parent = obj.parent
+				overlay.location = obj.location
+				self.assertEqual(overlay._get_name(), name)
+
+	def test_main_window_controls_are_named(self):
+		main_form = DummyObject("TAutorunOrganizerMainForm")
+		startup_frame = DummyObject("TStartupManagerFrame", parent=main_form)
+		cases = (
+			(DummyObject("TButtonedEdit", parent=startup_frame), "Search startup items"),
+			(DummyObject("TListView", parent=startup_frame, role=Role.LIST), "Startup items"),
+			(DummyObject("TStatusBar", parent=main_form), "Autorun Organizer status"),
+		)
+		for obj, expected in cases:
+			with self.subTest(expected=expected):
+				self.app.event_NVDAObject_init(obj)
+				self.assertEqual(obj.name, expected)
+
+	def test_secondary_6x_forms_receive_contextual_control_names(self):
+		settings = DummyObject("TSettingsForm")
+		undo = DummyObject("TUndoingChangesCenterForm")
+		new_item = DummyObject("TNewStartupItemForm")
+		cases = (
+			(DummyObject("TTreeView", parent=settings), "Settings categories"),
+			(DummyObject("TControlList", parent=undo), "Changes that can be undone"),
+			(DummyObject("TTreeView", parent=undo), "Objects affected by the selected change"),
+			(DummyObject("TPageControl", parent=new_item), "Startup entry type"),
+		)
+		for obj, expected in cases:
+			with self.subTest(expected=expected):
+				self.app.event_NVDAObject_init(obj)
+				self.assertEqual(obj.name, expected)
+
+	def test_non_main_list_is_not_mislabeled_as_startup_items(self):
+		obj = DummyObject("TListView", parent=DummyObject("TSettingsForm"), role=Role.LIST)
 		self.app.event_NVDAObject_init(obj)
-		self.assertEqual(obj.name, "Startup items")
+		self.assertEqual(obj.name, "")
 
 	def test_filter_selector_cycles(self):
 		selector = object.__new__(self.module._TopFilterSelector)
@@ -129,7 +216,7 @@ class AppModuleTests(unittest.TestCase):
 		self.assertEqual(self.app._topFilterIndex, 1)
 		self.assertIn("All", selector._get_name())
 
-	def test_click_uses_relative_center(self):
+	def test_click_uses_relative_position_and_restores_mouse(self):
 		positions = []
 		self.module.winUser.setCursorPos = lambda x, y: positions.append((x, y))
 		obj = types.SimpleNamespace(location=(100, 200, 80, 40))
@@ -137,29 +224,20 @@ class AppModuleTests(unittest.TestCase):
 		self.assertEqual(positions[0], (120, 220))
 		self.assertEqual(positions[-1], (10, 20))
 
-	def test_all_addon_commands_are_exposed_for_input_gesture_remapping(self):
-		command_names = (
-			"focusStartupList",
-			"focusSearch",
-			"viewImportant",
-			"viewAll",
-			"viewCustom",
-			"toggleNotifications",
-			"toggleStartupItem",
-			"bootTimeTab",
-			"applicationTab",
-			"readDetails",
-			"addonHelp",
-		)
-		self.assertEqual(self.module.AppModule.scriptCategory, "Autorun Organizer")
-		gestures = []
-		for name in command_names:
-			with self.subTest(command=name):
-				metadata = getattr(self.module.AppModule, f"script_{name}").scriptMetadata
-				self.assertTrue(metadata.get("description"))
-				self.assertTrue(metadata.get("gesture"))
-				gestures.append(metadata["gesture"])
-		self.assertEqual(len(gestures), len(set(gestures)))
+	def test_selected_item_menu_uses_standard_context_menu_key(self):
+		FOCUS["focus"] = types.SimpleNamespace(role=Role.LISTITEM)
+		self.app.openSelectedItemMenu()
+		self.assertEqual(DummyKeyboardGesture.sent, ["shift+f10"])
+
+	def test_version_7_does_not_receive_classic_overlays(self):
+		self.app.productVersion = "7.0"
+		classes = []
+		parent = DummyObject("TPanel", name="TopButtonsBarPanel")
+		self.app.chooseNVDAObjectOverlayClasses(DummyObject("TSciterHostWindow", parent=parent), classes)
+		self.assertEqual(classes, [])
+
+	def test_app_module_does_not_duplicate_global_input_commands(self):
+		self.assertFalse(any(name.startswith("script_") for name in self.module.AppModule.__dict__))
 
 
 if __name__ == "__main__":

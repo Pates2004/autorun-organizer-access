@@ -1,46 +1,50 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) 2026 Patryk (Pates2004)
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Accessibility support for Autorun Organizer 6.x.
+"""Accessibility support for the classic Autorun Organizer 6.x interface."""
 
-Autorun Organizer 6.x exposes its native VCL controls through UI Automation,
-but controls rendered by Sciter are presented as one unnamed object per panel.
-This module labels the native controls and turns those Sciter hosts into small,
-keyboard-operable virtual controls. It also provides direct commands for the
-most important areas of the application.
-"""
-
-import addonHandler
 import appModuleHandler
 import api
 import controlTypes
 import core
+import keyboardHandler
 import mouseHandler
 import ui
 import winUser
 from NVDAObjects.UIA import UIA
 from logHandler import log
-from scriptHandler import script
-
-
-addonHandler.initTranslation()
 
 
 _TOP_FILTERS = (
-	(_("Important"), 0.22),
-	(_("All"), 0.54),
-	(_("Custom"), 0.83),
+	("Important", 0.22),
+	("All", 0.54),
+	("Custom", 0.83),
 )
 
 _DETAIL_TABS = (
-	(_("Boot time"), 0.24),
-	(_("Application"), 0.72),
+	("Boot time", 0.24),
+	("Application", 0.72),
+)
+
+_TOP_ICON_NAMES = (
+	"Notification center",
+	"Settings and commands",
+)
+
+_STATUS_ACTION_NAMES = (
+	"Interface theme",
+	"Background functions",
+	"Reviews",
+	"Undo changes",
 )
 
 _INTERNAL_NAMES = {
 	"None",
 	"Card1_1",
 	"Card1_2",
+	"Card1_3",
+	"Card1_5",
+	"Card1_6",
 	"Card2_1",
 	"CardPanel1",
 	"CardPanel2",
@@ -66,6 +70,20 @@ def _parentName(obj):
 		return ""
 
 
+def _hasAncestorClass(obj, className, maxDepth=12):
+	current = obj
+	for _depth in range(maxDepth):
+		if current is None:
+			return False
+		if _uiaClassName(current) == className:
+			return True
+		try:
+			current = current.parent
+		except Exception:
+			return False
+	return False
+
+
 def _locationTuple(obj):
 	location = obj.location
 	try:
@@ -74,27 +92,97 @@ def _locationTuple(obj):
 		return tuple(location)
 
 
-class _ClickableSciterControl(UIA):
-	"""Base overlay for a focusable Sciter host."""
+def _horizontalRatioInParent(obj):
+	try:
+		left, _top, width, _height = _locationTuple(obj)
+		parentLeft, _parentTop, parentWidth, _parentHeight = _locationTuple(obj.parent)
+		if parentWidth <= 0:
+			return None
+		return ((left + width / 2) - parentLeft) / parentWidth
+	except Exception:
+		return None
+
+
+def _topIconIndex(obj):
+	"""Classify the two unlabeled icon panels to the right of the search box."""
+	if _uiaClassName(obj) != "TPanel" or _uiaClassName(getattr(obj, "parent", None)) != "TStackPanel":
+		return None
+	try:
+		_left, _top, width, height = _locationTuple(obj)
+		_parentLeft, _parentTop, parentWidth, parentHeight = _locationTuple(obj.parent)
+	except Exception:
+		return None
+	if (
+		width <= 0
+		or height <= 0
+		or parentWidth <= 0
+		or parentHeight <= 0
+		or width / parentWidth > 0.32
+		or height / parentHeight > 1.5
+	):
+		return None
+	ratio = _horizontalRatioInParent(obj)
+	if ratio is None or ratio < 0.65:
+		return None
+	return 0 if ratio < 0.86 else 1
+
+
+def _statusActionIndex(obj):
+	"""Classify the four unlabeled action panels in the status bar."""
+	if _uiaClassName(obj) != "TPanel" or _uiaClassName(getattr(obj, "parent", None)) != "TStatusBar":
+		return None
+	try:
+		_left, _top, width, height = _locationTuple(obj)
+		_parentLeft, _parentTop, parentWidth, parentHeight = _locationTuple(obj.parent)
+	except Exception:
+		return None
+	if height <= 0 or parentHeight <= 0 or parentWidth <= 0 or height / parentHeight > 1.5:
+		return None
+	ratio = _horizontalRatioInParent(obj)
+	if ratio is None:
+		return None
+	widthRatio = width / parentWidth
+	if widthRatio <= 0.09:
+		if 0.54 <= ratio < 0.61:
+			return 0
+		if 0.61 <= ratio < 0.68:
+			return 1
+	elif widthRatio >= 0.1:
+		if 0.68 <= ratio < 0.84:
+			return 2
+		if ratio >= 0.84:
+			return 3
+	return None
+
+
+def _isObjectVisible(obj):
+	try:
+		if obj.UIAElement.CurrentIsOffscreen:
+			return False
+	except Exception:
+		pass
+	try:
+		hwnd = int(obj.UIAElement.CurrentNativeWindowHandle or 0)
+		if hwnd and not winUser.isWindowVisible(hwnd):
+			return False
+	except Exception:
+		pass
+	try:
+		_left, _top, width, height = _locationTuple(obj)
+		return width > 0 and height > 0
+	except Exception:
+		return True
+
+
+class _ClickableControl(UIA):
+	"""Base overlay for controls which need a mouse-backed default action."""
 
 	def _click(self, xRatio=0.5):
 		return self.appModule._clickObject(self, xRatio=xRatio)
 
-
-class _SciterToggle(_ClickableSciterControl):
-	def _get_name(self):
-		if _parentName(self) == "Notifications":
-			return _("Notifications about new startup items")
-		return _("Selected startup item state")
-
-	def _get_role(self):
-		return controlTypes.Role.CHECKBOX
-
 	def script_activate(self, gesture):
-		if self._click():
-			ui.message(_("Toggled. The state will be applied by Autorun Organizer."))
-		else:
-			ui.message(_("Unable to activate the toggle."))
+		if not self._click():
+			ui.message("Unable to activate the control.")
 
 	__gestures = {
 		"kb:enter": "activate",
@@ -102,7 +190,54 @@ class _SciterToggle(_ClickableSciterControl):
 	}
 
 
-class _SciterSelector(_ClickableSciterControl):
+class _NativeClickableLabel(_ClickableControl):
+	def _get_role(self):
+		return controlTypes.Role.BUTTON
+
+
+class _GroupButton(_ClickableControl):
+	def _get_role(self):
+		return controlTypes.Role.RADIOBUTTON
+
+
+class _TopIconButton(_ClickableControl):
+	def _get_name(self):
+		index = _topIconIndex(self)
+		return _TOP_ICON_NAMES[index] if index is not None else "Autorun Organizer action"
+
+	def _get_role(self):
+		return controlTypes.Role.BUTTON
+
+
+class _StatusActionButton(_ClickableControl):
+	def _get_name(self):
+		index = _statusActionIndex(self)
+		return _STATUS_ACTION_NAMES[index] if index is not None else "Autorun Organizer status action"
+
+	def _get_role(self):
+		return controlTypes.Role.BUTTON
+
+
+class _SciterToggle(_ClickableControl):
+	def _get_name(self):
+		parentName = _parentName(self)
+		if parentName == "Notifications":
+			return "Notifications about new startup items"
+		if parentName == "Measure each system load time":
+			return "Measure each system load time"
+		return "Selected startup item state"
+
+	def _get_role(self):
+		return controlTypes.Role.CHECKBOX
+
+	def script_activate(self, gesture):
+		if self._click():
+			ui.message("Toggled. The state will be applied by Autorun Organizer.")
+		else:
+			ui.message("Unable to activate the toggle.")
+
+
+class _SciterSelector(_ClickableControl):
 	options = ()
 	indexAttribute = ""
 	title = ""
@@ -118,11 +253,13 @@ class _SciterSelector(_ClickableSciterControl):
 		index = getattr(self.appModule, self.indexAttribute, 0)
 		index = (index + delta) % len(self.options)
 		setattr(self.appModule, self.indexAttribute, index)
-		ui.message(_("{label}, {position} of {count}").format(
-			label=self.options[index][0],
-			position=index + 1,
-			count=len(self.options),
-		))
+		ui.message(
+			"{label}, {position} of {count}".format(
+				label=self.options[index][0],
+				position=index + 1,
+				count=len(self.options),
+			),
+		)
 
 	def script_previous(self, gesture):
 		self._move(-1)
@@ -134,9 +271,9 @@ class _SciterSelector(_ClickableSciterControl):
 		index = getattr(self.appModule, self.indexAttribute, 0)
 		label, ratio = self.options[index]
 		if self._click(ratio):
-			ui.message(_("Selected: {label}").format(label=label))
+			ui.message(f"Selected: {label}")
 		else:
-			ui.message(_("Unable to select the item."))
+			ui.message("Unable to select the item.")
 
 	__gestures = {
 		"kb:leftArrow": "previous",
@@ -151,23 +288,28 @@ class _SciterSelector(_ClickableSciterControl):
 class _TopFilterSelector(_SciterSelector):
 	options = _TOP_FILTERS
 	indexAttribute = "_topFilterIndex"
-	title = _("View filter")
+	title = "View filter"
 
 
 class _DetailTabSelector(_SciterSelector):
 	options = _DETAIL_TABS
 	indexAttribute = "_detailTabIndex"
-	title = _("Details tab")
+	title = "Details tab"
 
 
 class AppModule(appModuleHandler.AppModule):
-	scriptCategory = "Autorun Organizer"
+	"""NVDA app module for every classic Autorun Organizer 6.x window."""
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._topFilterIndex = 0
 		self._detailTabIndex = 1
 		self._readInitialView()
+
+	@property
+	def isSupportedVersion(self):
+		version = str(getattr(self, "productVersion", "") or "").strip()
+		return not version or version.startswith("6.")
 
 	def _readInitialView(self):
 		try:
@@ -187,34 +329,73 @@ class AppModule(appModuleHandler.AppModule):
 			pass
 
 	def isGoodUIAWindow(self, hwnd):
-		# The VCL accessibility provider is useful here even though every object
-		# shares the main window's HWND class.
 		return True
 
 	def chooseNVDAObjectOverlayClasses(self, obj, clsList):
-		if not isinstance(obj, UIA) or _uiaClassName(obj) != "TSciterHostWindow":
+		if not self.isSupportedVersion or not isinstance(obj, UIA):
 			return
-		parentName = _parentName(obj)
-		if parentName in ("Notifications", "ToggleSwitcher2Holder"):
-			clsList.insert(0, _SciterToggle)
-		elif parentName == "TopButtonsBarPanel":
-			clsList.insert(0, _TopFilterSelector)
-		elif parentName == "InfoPanelButtonsBarPanel":
-			clsList.insert(0, _DetailTabSelector)
+		className = _uiaClassName(obj)
+		if className == "TSciterHostWindow":
+			parentName = _parentName(obj)
+			if parentName in (
+				"Notifications",
+				"ToggleSwitcher2Holder",
+				"Measure each system load time",
+			):
+				clsList.insert(0, _SciterToggle)
+			elif parentName == "TopButtonsBarPanel":
+				clsList.insert(0, _TopFilterSelector)
+			elif parentName == "InfoPanelButtonsBarPanel":
+				clsList.insert(0, _DetailTabSelector)
+		elif className == "TClickableLabelControl":
+			clsList.insert(0, _NativeClickableLabel)
+		elif className == "TGroupButton":
+			clsList.insert(0, _GroupButton)
+		elif _topIconIndex(obj) is not None:
+			clsList.insert(0, _TopIconButton)
+		elif _statusActionIndex(obj) is not None:
+			clsList.insert(0, _StatusActionButton)
 
 	def event_NVDAObject_init(self, obj):
+		if not self.isSupportedVersion:
+			return
 		try:
 			className = _uiaClassName(obj)
-			if className == "TButtonedEdit":
-				obj.name = _("Search startup items")
-			elif className == "TListView" and obj.role == controlTypes.Role.LIST:
-				obj.name = _("Startup items")
-			elif className == "TClickableLabelControl":
-				obj.role = controlTypes.Role.BUTTON
+			if className == "TButtonedEdit" and _hasAncestorClass(obj, "TStartupManagerFrame"):
+				obj.name = "Search startup items"
+			elif (
+				className == "TListView"
+				and obj.role == controlTypes.Role.LIST
+				and _hasAncestorClass(obj, "TStartupManagerFrame")
+			):
+				obj.name = "Startup items"
+			elif (
+				className == "TStatusBar"
+				and _hasAncestorClass(obj, "TAutorunOrganizerMainForm")
+				and not (obj.name or "").strip()
+			):
+				obj.name = "Autorun Organizer status"
+			elif className == "TTreeView" and not (obj.name or "").strip():
+				if _hasAncestorClass(obj, "TSettingsForm"):
+					obj.name = "Settings categories"
+				elif _hasAncestorClass(obj, "TUndoingChangesCenterForm"):
+					obj.name = "Objects affected by the selected change"
+			elif (
+				className == "TControlList"
+				and _hasAncestorClass(obj, "TUndoingChangesCenterForm")
+				and not (obj.name or "").strip()
+			):
+				obj.name = "Changes that can be undone"
+			elif (
+				className == "TPageControl"
+				and _hasAncestorClass(obj, "TNewStartupItemForm")
+				and not (obj.name or "").strip()
+			):
+				obj.name = "Startup entry type"
 		except Exception:
 			log.debugWarning("Unable to improve an Autorun Organizer object", exc_info=True)
 
-	def _walkForeground(self, maxObjects=300):
+	def _walkForeground(self, maxObjects=600):
 		try:
 			root = api.getForegroundObject()
 		except Exception:
@@ -233,7 +414,7 @@ class AppModule(appModuleHandler.AppModule):
 			except Exception:
 				pass
 
-	def _findObject(self, *, className=None, parentName=None, role=None, name=None):
+	def _findObject(self, *, className=None, parentName=None, role=None, name=None, visibleOnly=False):
 		for obj in self._walkForeground():
 			try:
 				if className is not None and _uiaClassName(obj) != className:
@@ -244,7 +425,18 @@ class AppModule(appModuleHandler.AppModule):
 					continue
 				if name is not None and obj.name != name:
 					continue
+				if visibleOnly and not _isObjectVisible(obj):
+					continue
 				return obj
+			except Exception:
+				continue
+		return None
+
+	def _findClassifiedPanel(self, classifier, index):
+		for obj in self._walkForeground():
+			try:
+				if classifier(obj) == index and _isObjectVisible(obj):
+					return obj
 			except Exception:
 				continue
 		return None
@@ -266,12 +458,16 @@ class AppModule(appModuleHandler.AppModule):
 			return False
 
 	def _clickSciter(self, parentName, ratio=0.5, successMessage=None):
-		obj = self._findObject(className="TSciterHostWindow", parentName=parentName)
+		obj = self._findObject(
+			className="TSciterHostWindow",
+			parentName=parentName,
+			visibleOnly=True,
+		)
 		if obj is None:
-			ui.message(_("This control is not currently available in the application window."))
+			ui.message("This control is not currently available in the application window.")
 			return False
 		if not self._clickObject(obj, xRatio=ratio):
-			ui.message(_("Unable to activate the control."))
+			ui.message("Unable to activate the control.")
 			return False
 		if successMessage:
 			ui.message(successMessage)
@@ -280,102 +476,178 @@ class AppModule(appModuleHandler.AppModule):
 	def _focusObject(self, obj, missingMessage):
 		if obj is None:
 			ui.message(missingMessage)
-			return
+			return False
 		try:
 			obj.setFocus()
+			return True
 		except Exception:
 			try:
 				api.setNavigatorObject(obj)
-				ui.message(obj.name or _("NVDA navigator object set"))
+				ui.message(obj.name or "NVDA navigator object set")
+				return True
 			except Exception:
-				ui.message(_("Unable to move focus."))
+				ui.message("Unable to move focus.")
+				return False
+
+	def _clickTopIcon(self, index):
+		obj = self._findClassifiedPanel(_topIconIndex, index)
+		if obj is None or not self._clickObject(obj):
+			ui.message(f"{_TOP_ICON_NAMES[index]} is not currently available.")
+			return False
+		ui.message(f"Opened {_TOP_ICON_NAMES[index]}.")
+		return True
+
+	def _clickStatusAction(self, index):
+		obj = self._findClassifiedPanel(_statusActionIndex, index)
+		if obj is None or not self._clickObject(obj):
+			ui.message(f"{_STATUS_ACTION_NAMES[index]} is not currently available.")
+			return False
+		ui.message(f"Activated {_STATUS_ACTION_NAMES[index]}.")
+		return True
 
 	def _selectTopFilter(self, index):
 		self._topFilterIndex = index
 		label, ratio = _TOP_FILTERS[index]
-		self._clickSciter("TopButtonsBarPanel", ratio, _("View: {label}").format(label=label))
+		return self._clickSciter("TopButtonsBarPanel", ratio, f"View: {label}")
 
 	def _selectDetailTab(self, index):
 		self._detailTabIndex = index
 		label, ratio = _DETAIL_TABS[index]
-		self._clickSciter("InfoPanelButtonsBarPanel", ratio, _("Tab: {label}").format(label=label))
+		return self._clickSciter("InfoPanelButtonsBarPanel", ratio, f"Tab: {label}")
 
-	@script(description=_("Moves focus to the startup item list"), gesture="kb:NVDA+alt+l")
-	def script_focusStartupList(self, gesture):
-		obj = self._findObject(className="TListView", role=controlTypes.Role.LIST)
-		self._focusObject(obj, _("The startup item list was not found."))
+	def _sendKey(self, keyName):
+		try:
+			keyboardHandler.KeyboardInputGesture.fromName(keyName).send()
+		except Exception:
+			log.error("Sending an Autorun Organizer keyboard command failed", exc_info=True)
+			ui.message("Unable to send the keyboard command.")
 
-	@script(description=_("Moves focus to the search field"), gesture="kb:NVDA+alt+f")
-	def script_focusSearch(self, gesture):
-		obj = self._findObject(className="TButtonedEdit")
-		self._focusObject(obj, _("The search field was not found."))
+	def focusStartupList(self):
+		obj = self._findObject(className="TListView", role=controlTypes.Role.LIST, visibleOnly=True)
+		self._focusObject(obj, "The startup item list was not found.")
 
-	@script(description=_("Selects the Important view"), gesture="kb:NVDA+alt+1")
-	def script_viewImportant(self, gesture):
+	def focusSearch(self):
+		obj = self._findObject(className="TButtonedEdit", visibleOnly=True)
+		self._focusObject(obj, "The search field was not found.")
+
+	def viewImportant(self):
 		self._selectTopFilter(0)
 
-	@script(description=_("Selects the All view"), gesture="kb:NVDA+alt+2")
-	def script_viewAll(self, gesture):
+	def viewAll(self):
 		self._selectTopFilter(1)
 
-	@script(description=_("Selects the Custom view"), gesture="kb:NVDA+alt+3")
-	def script_viewCustom(self, gesture):
+	def viewCustom(self):
 		self._selectTopFilter(2)
 
-	@script(description=_("Toggles application notifications"), gesture="kb:NVDA+alt+n")
-	def script_toggleNotifications(self, gesture):
-		self._clickSciter("Notifications", 0.5, _("Notification setting toggled."))
+	def openStartupLocations(self):
+		self._topFilterIndex = 2
+		if self._clickSciter("TopButtonsBarPanel", 0.97):
+			ui.message("Startup locations menu opened.")
 
-	@script(description=_("Enables or disables the selected startup item"), gesture="kb:NVDA+alt+s")
-	def script_toggleStartupItem(self, gesture):
-		self._clickSciter(
-			"ToggleSwitcher2Holder",
-			0.5,
-			_("Selected startup item state toggled."),
-		)
+	def toggleNotifications(self):
+		self._clickSciter("Notifications", 0.5, "Notification setting toggled.")
 
-	@script(description=_("Opens the Boot time tab"), gesture="kb:NVDA+alt+b")
-	def script_bootTimeTab(self, gesture):
+	def openNotificationCenter(self):
+		self._clickTopIcon(0)
+
+	def toggleStartupItem(self):
+		if self._selectDetailTab(1):
+			core.callLater(
+				140,
+				self._clickSciter,
+				"ToggleSwitcher2Holder",
+				0.5,
+				"Selected startup item state toggled.",
+			)
+
+	def openSelectedItemMenu(self):
+		focus = api.getFocusObject()
+		if getattr(focus, "role", None) == controlTypes.Role.LISTITEM:
+			self._sendKey("shift+f10")
+			return
+		obj = self._findObject(className="TListView", role=controlTypes.Role.LIST, visibleOnly=True)
+		if self._focusObject(obj, "The startup item list was not found."):
+			core.callLater(100, self._sendKey, "shift+f10")
+
+	def bootTimeTab(self):
 		self._selectDetailTab(0)
 
-	@script(description=_("Opens the Application tab"), gesture="kb:NVDA+alt+a")
-	def script_applicationTab(self, gesture):
+	def applicationTab(self):
 		self._selectDetailTab(1)
 
-	@script(description=_("Reads available details for the selected item"), gesture="kb:NVDA+alt+d")
-	def script_readDetails(self, gesture):
+	def toggleMeasureEachBoot(self):
+		if self._selectDetailTab(0):
+			core.callLater(
+				140,
+				self._clickSciter,
+				"Measure each system load time",
+				0.5,
+				"Measure each system load time toggled.",
+			)
+
+	def readDetails(self):
 		parts = []
 		focus = api.getFocusObject()
 		if focus and focus.role == controlTypes.Role.LISTITEM and focus.name:
 			parts.append(focus.name.strip())
-		panel = self._findObject(name="CardPanel1")
+		panel = self._findObject(className="TCardPanel", name="CardPanel1", visibleOnly=True)
 		if panel is not None:
 			stack = []
 			try:
 				stack.extend(reversed(panel.children))
 			except Exception:
 				pass
-			while stack and len(parts) < 12:
+			seen = set(parts)
+			while stack and len(parts) < 30:
 				obj = stack.pop()
 				try:
+					if not _isObjectVisible(obj):
+						continue
 					name = (obj.name or "").strip()
-					if name and name not in _INTERNAL_NAMES and name not in parts:
+					if name and name not in _INTERNAL_NAMES and name not in seen:
 						parts.append(name)
+						seen.add(name)
 					stack.extend(reversed(obj.children))
 				except Exception:
 					continue
 		if parts:
 			ui.message(". ".join(parts))
 		else:
-			ui.message(_("No details are available for the current item."))
+			ui.message("No details are available for the current item or tab.")
 
-	@script(description=_("Reports Autorun Organizer Access commands"), gesture="kb:NVDA+alt+h")
-	def script_addonHelp(self, gesture):
-		ui.message(
-			_(
-				"Add-on commands: NVDA plus Alt plus L, list; F, search; "
-				"1, 2, 3, view filters; S, toggle selected item; "
-				"N, notifications; A, application details; B, boot time; "
-				"D, read details."
-			)
-		)
+	def openMainMenu(self):
+		self._clickTopIcon(1)
+
+	def openUndoChanges(self):
+		self._clickStatusAction(3)
+
+	def openReviews(self):
+		self._clickStatusAction(2)
+
+	def toggleTheme(self):
+		self._clickStatusAction(0)
+
+	def openBackgroundFunctions(self):
+		self._clickStatusAction(1)
+
+	def focusRebootAndMeasure(self):
+		if self._selectDetailTab(0):
+			core.callLater(140, self._focusNamedButton, "Reboot and measure")
+
+	def _focusNamedButton(self, namePrefix):
+		for obj in self._walkForeground():
+			try:
+				if (
+					_uiaClassName(obj) == "TButton"
+					and (obj.name or "").startswith(namePrefix)
+					and _isObjectVisible(obj)
+				):
+					self._focusObject(obj, "")
+					return
+			except Exception:
+				continue
+		ui.message(f"The {namePrefix} button was not found.")
+
+	def focusFrequencyDisplay(self):
+		obj = self._findObject(className="TButton", name="Display", visibleOnly=True)
+		self._focusObject(obj, "The disable and delay frequency button was not found.")

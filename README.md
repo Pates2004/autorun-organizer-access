@@ -1,16 +1,19 @@
 # Autorun Organizer Access
 
-An NVDA add-on that improves keyboard access to the classic Autorun Organizer 6.x interface.
+An English-only NVDA add-on providing complete keyboard access to the classic Autorun Organizer 6.x interface.
 
-The add-on was developed and tested with Autorun Organizer 6.32 and NVDA 2026.1.1. Autorun Organizer 7.0 uses a different, Sciter-rendered application list and is not supported by this release.
+The add-on targets the entire classic 6.x family and has been tested directly with Autorun Organizer 6.32 and NVDA 2026.1.1. Autorun Organizer 7.x uses a redesigned Sciter application list and is intentionally rejected by this add-on.
 
 ## Features
 
-- Names the startup item list and search field exposed through UI Automation.
-- Turns otherwise unnamed Sciter panels into keyboard-operable filters, tabs, and toggles.
-- Adds direct commands for the startup list, search, view filters, item state, notifications, and detail tabs.
-- Exposes every add-on command in NVDA's Input Gestures dialog.
-- Includes English messages and a complete Polish translation.
+- Names the startup list, search field, status bar, top icon buttons, and status actions.
+- Turns inaccessible Sciter filters, detail tabs, and switches into keyboard-operable NVDA controls.
+- Makes clickable VCL labels and startup-type group buttons operable with Enter and Space.
+- Provides direct access to all areas of the classic main window: startup filters and locations, selected-entry commands, notification settings and center, boot-time controls, application details, Settings and commands, background functions, reviews, and Undo changes.
+- Exposes 22 commands permanently in NVDA's Input Gestures dialog. Assigned keys only become active while Autorun Organizer 6.x has focus, so they do not shadow shortcuts in other applications.
+- Keeps destructive actions behind Autorun Organizer's own menus and confirmation dialogs.
+
+The selected-entry command opens the application's standard context menu. From there, all actions supported for that entry remain available, including launch, open containing folder or startup location, search online, disable, delay, prevent re-enabling or undelaying, remove, uninstall, and additional properties. The exact entries depend on the selected startup item type.
 
 ## Installation
 
@@ -18,27 +21,40 @@ Download the `.nvda-addon` file from the latest GitHub release, open it while NV
 
 ## Commands
 
-| Gesture | Action |
+| Default gesture | Action |
 | --- | --- |
 | NVDA+Alt+L | Focus the startup item list |
 | NVDA+Alt+F | Focus search |
 | NVDA+Alt+1 | Select the Important view |
 | NVDA+Alt+2 | Select the All view |
 | NVDA+Alt+3 | Select the Custom view |
-| NVDA+Alt+S | Toggle the selected startup item |
-| NVDA+Alt+N | Toggle Autorun Organizer notifications |
+| NVDA+Alt+4 | Open the startup locations menu |
+| NVDA+Alt+S | Enable or disable the selected startup item |
+| NVDA+Alt+C | Open commands for the selected startup item |
+| NVDA+Alt+N | Toggle notifications about new startup items |
+| NVDA+Alt+Shift+N | Open the notification center |
 | NVDA+Alt+A | Open the Application tab |
 | NVDA+Alt+B | Open the Boot time tab |
-| NVDA+Alt+D | Read available details for the selected item |
-| NVDA+Alt+H | Report add-on commands |
+| NVDA+Alt+Shift+B | Toggle measuring every system load time |
+| NVDA+Alt+D | Read the selected item and current-tab details |
+| NVDA+Alt+M | Open Settings and commands |
+| NVDA+Alt+U | Open Undo changes |
+| NVDA+Alt+H | Report the default commands |
+| Unassigned | Open reviews |
+| Unassigned | Toggle the interface theme |
+| Unassigned | Open Background functions |
+| Unassigned | Focus Reboot and measure |
+| Unassigned | Focus the disable and delay frequency button |
 
-To change or remove a gesture, open **NVDA menu → Preferences → Input Gestures → Autorun Organizer**.
+All 22 commands are always listed under **NVDA menu → Preferences → Input Gestures → Autorun Organizer Access**, even when Autorun Organizer is not the currently focused application. Every default gesture can be changed or removed, and a gesture can be assigned to any command marked Unassigned.
 
-Arrow keys select an option when focus is on a virtual filter or details-tab control. Enter and Space activate the selected option or toggle.
+When focus is on a virtual filter or details-tab control, use the arrow keys to choose an option and Enter or Space to activate it. Enter and Space also activate the virtual switches, clickable labels, group buttons, and newly labeled icon controls.
 
 ## Compatibility and limitations
 
-The Sciter controls used by Autorun Organizer 6.x do not expose their internal elements through UI Automation. The add-on activates these controls using positions relative to each control's current rectangle. This avoids fixed screen coordinates but can still be affected by major interface changes.
+Autorun Organizer 6.x renders several controls with Sciter without exposing their internal elements through UI Automation. The add-on activates those elements using positions relative to the current control rectangle rather than fixed screen coordinates. It also classifies the stable VCL panels by their parent, size, and relative position. This covers the classic 6.x layout across window positions and DPI settings, although a vendor redesign can require an add-on update.
+
+Only 6.32 has been directly regression-tested. The add-on accepts all 6.x product versions because they use the classic control layout, but it refuses to apply its overlays and commands to 7.x.
 
 This project does not bundle Autorun Organizer and is not affiliated with ChemTable Software.
 
@@ -47,8 +63,7 @@ This project does not bundle Autorun Organizer and is not affiliated with ChemTa
 Requirements:
 
 - Windows PowerShell 5.1 or newer;
-- Python 3.13 for unit tests;
-- optional GNU `msgfmt` when recompiling the Polish translation.
+- Python 3.13 for unit tests.
 
 Run:
 
