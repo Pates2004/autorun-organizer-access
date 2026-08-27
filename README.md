@@ -16,6 +16,15 @@ The add-on targets the entire classic 6.x family and has been tested directly wi
 - Translates exposed Autorun Organizer captions spoken by NVDA and shown in braille between English and Polish. This includes the main view, menus, common dialogs, settings, notifications, startup-entry creation, and Undo Changes Center.
 - Keeps destructive actions behind Autorun Organizer's own menus and confirmation dialogs.
 
+## Context-menu state
+
+When a startup item context menu contains a stateful command such as **Disable**
+or **Enable**, NVDA now speaks the state in the item name, for example
+**Disable; checked** or **Disable; not checked**.  This works with both the
+UI Automation and VCL/MSAA accessibility providers used by Autorun Organizer
+6.x.  If the program does not expose a state for that command, the add-on says
+**selection state unavailable** rather than guessing.
+
 ## Language setting
 
 Open **NVDA Settings → Autorun Organizer Access** and choose:

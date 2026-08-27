@@ -14,11 +14,21 @@ SHARED_PATH = Path(__file__).parents[1] / "addon" / "autorunOrganizerAccessShare
 
 class Role(Enum):
 	CHECKBOX = auto()
+	MENUITEM = auto()
+	CHECKMENUITEM = auto()
+	RADIOMENUITEM = auto()
 	TABCONTROL = auto()
 	LIST = auto()
 	LISTITEM = auto()
 	BUTTON = auto()
 	RADIOBUTTON = auto()
+
+
+class State(Enum):
+	CHECKED = auto()
+	HALFCHECKED = auto()
+	CHECKABLE = auto()
+	UNAVAILABLE = auto()
 
 
 class UIA:
@@ -66,7 +76,7 @@ def load_module():
 			getFocusObject=lambda: FOCUS["focus"],
 			setNavigatorObject=lambda obj: FOCUS.__setitem__("navigator", obj),
 		),
-		"controlTypes": types.SimpleNamespace(Role=Role),
+		"controlTypes": types.SimpleNamespace(Role=Role, State=State),
 		"core": types.SimpleNamespace(callLater=lambda delay, function, *args: function(*args)),
 		"keyboardHandler": types.SimpleNamespace(KeyboardInputGesture=DummyKeyboardGesture),
 		"mouseHandler": types.SimpleNamespace(doPrimaryClick=lambda: None),
@@ -96,6 +106,7 @@ class DummyElement:
 		self.CurrentClassName = class_name
 		self.CurrentIsOffscreen = False
 		self.CurrentNativeWindowHandle = 0
+		self.CurrentToggleState = None
 
 
 class DummyObject(UIA):
@@ -108,6 +119,8 @@ class DummyObject(UIA):
 		role=None,
 		location=(0, 0, 100, 30),
 		children=None,
+		states=None,
+		checked=None,
 	):
 		self.UIAElement = DummyElement(class_name)
 		self.parent = parent or types.SimpleNamespace(name="")
@@ -115,7 +128,16 @@ class DummyObject(UIA):
 		self.role = role
 		self.location = location
 		self.children = list(children or [])
+		self.states = set(states or ())
+		if checked is not None:
+			self.checked = checked
 		self.focused = False
+
+	def _get_name(self):
+		return self.name
+
+	def _get_states(self):
+		return set(self.states)
 
 	def setFocus(self):
 		self.focused = True
@@ -225,6 +247,70 @@ class AppModuleTests(unittest.TestCase):
 		obj = DummyObject("TListView", parent=DummyObject("TSettingsForm"), role=Role.LIST)
 		self.app.event_NVDAObject_init(obj)
 		self.assertEqual(obj.name, "")
+
+	def test_context_menu_items_keep_and_announce_checked_state(self):
+		obj = DummyObject(
+			"TMenuItem",
+			name="Disable",
+			role=Role.MENUITEM,
+			states={State.CHECKABLE, State.CHECKED},
+		)
+		classes = []
+		self.app.chooseNVDAObjectOverlayClasses(obj, classes)
+		self.assertEqual(classes[0], self.module._StatefulContextMenuItem)
+		self.app.event_NVDAObject_init(obj)
+		self.assertEqual(obj.name, "Disable; checked")
+		# Build the same overlay MRO NVDA uses and verify the spoken label.
+		class Overlay(self.module._StatefulContextMenuItem, DummyObject):
+			pass
+
+		overlay = Overlay("TMenuItem", name="Disable", role=Role.MENUITEM, states=obj.states)
+		self.assertEqual(overlay._get_name(), "Disable; checked")
+
+	def test_context_menu_overlay_does_not_recurse_through_nvda_name_property(self):
+		class ProviderObject(DummyObject):
+			@property
+			def name(self):
+				return self._get_name()
+
+			@name.setter
+			def name(self, value):
+				self.provider_name = value
+
+			def _get_name(self):
+				return self.provider_name
+
+		class Overlay(self.module._StatefulContextMenuItem, ProviderObject):
+			pass
+
+		obj = Overlay("TMenuItem", name="Disable", role=Role.MENUITEM, states={State.CHECKABLE})
+		self.assertEqual(obj.name, "Disable; not checked")
+
+	def test_context_menu_items_announce_unchecked_and_unknown_states(self):
+		class Overlay(self.module._StatefulContextMenuItem, DummyObject):
+			pass
+
+		unchecked = Overlay(
+			"TMenuItem",
+			name="Disable",
+			role=Role.CHECKMENUITEM,
+			states={State.CHECKABLE},
+		)
+		unknown = Overlay("TMenuItem", name="Disable", role=Role.MENUITEM)
+		self.assertEqual(unchecked._get_name(), "Disable; not checked")
+		self.assertEqual(unknown._get_name(), "Disable; selection state unavailable")
+
+	def test_context_menu_translation_handles_accelerators(self):
+		class Overlay(self.module._StatefulContextMenuItem, DummyObject):
+			pass
+
+		obj = Overlay(
+			"TMenuItem",
+			name="&Disable\tCtrl+D",
+			role=Role.MENUITEM,
+			states={State.CHECKABLE, State.CHECKED},
+		)
+		self.assertEqual(obj._get_name(), "Disable; checked")
 
 	def test_filter_selector_cycles(self):
 		selector = object.__new__(self.module._TopFilterSelector)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1 — 2026-08-27
+
+- Fixed the classic startup-item context menu: **Disable/Wyłącz** and other stateful commands now include their real checked state in the accessible label, including when Autorun Organizer exposes the menu through VCL/MSAA instead of UI Automation.
+- Preserved the provider's native NVDA states and report **selection state unavailable** when Autorun Organizer does not expose a check state, instead of guessing.
+
 ## 1.3.0 — 2026-08-24
 
 - Added a dedicated **Autorun Organizer Access** category to NVDA Settings.

@@ -14,6 +14,14 @@ Dodatek obsługuje całą rodzinę klasycznych wersji 6.x. Został bezpośrednio
 - Tłumaczy na polski nazwy Autorun Organizer udostępnione NVDA przez UI Automation lub MSAA: główny widok, menu, typowe okna dialogowe, ustawienia, powiadomienia, dodawanie wpisu i Centrum cofania zmian.
 - Pozostawia działania usuwające dane w menu i oknach potwierdzenia samego programu.
 
+## Stan w menu kontekstowym
+
+Po otwarciu menu kontekstowego elementu autostartu pozycje stanowe, takie jak
+**Wyłącz** lub **Włącz**, są odczytywane wraz ze stanem: **zaznaczone** albo
+**niezaznaczone**. Działa to zarówno dla UI Automation, jak i dla starszego
+interfejsu VCL/MSAA programu. Jeżeli program nie udostępni stanu, NVDA poda
+**stan zaznaczenia niedostępny** zamiast zgadywać.
+
 ## Ustawienie języka
 
 Otwórz **Ustawienia NVDA → Autorun Organizer Access** i wybierz:
