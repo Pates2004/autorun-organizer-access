@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2 — 2026-09-01
+
+- Restored NVDA's native MSAA handling for the standard Autorun Organizer popup menu. The add-on had incorrectly forced UI Automation on the menu window, which made **Disable/Wyłącz** intermittently disappear or lose its checked state.
+- Removed the 1.3.1 caption-based state workaround. Context-menu roles and states now come unchanged from the application's working MSAA provider; the add-on only translates the exposed caption.
+
 ## 1.3.1 — 2026-08-27
 
 - Fixed the classic startup-item context menu: **Disable/Wyłącz** and other stateful commands now include their real checked state in the accessible label, including when Autorun Organizer exposes the menu through VCL/MSAA instead of UI Automation.

@@ -16,11 +16,14 @@ Dodatek obsługuje całą rodzinę klasycznych wersji 6.x. Został bezpośrednio
 
 ## Stan w menu kontekstowym
 
-Po otwarciu menu kontekstowego elementu autostartu pozycje stanowe, takie jak
-**Wyłącz** lub **Włącz**, są odczytywane wraz ze stanem: **zaznaczone** albo
-**niezaznaczone**. Działa to zarówno dla UI Automation, jak i dla starszego
-interfejsu VCL/MSAA programu. Jeżeli program nie udostępni stanu, NVDA poda
-**stan zaznaczenia niedostępny** zamiast zgadywać.
+Klasyczne menu kontekstowe jest celowo obsługiwane przez natywny interfejs
+MSAA — dokładnie tak jak po wyłączeniu dodatku. Dzięki temu NVDA zachowuje
+rzeczywisty stan zaznaczenia pozycji **Wyłącz**. Dodatek tłumaczy udostępniony
+napis, ale nie zastępuje roli ani stanu pozycji menu.
+
+**Wyłącz** jest poleceniem przełączanym, a jego nazwa nie zmienia się na
+**Uruchom**. Stan zaznaczony oznacza, że wybrany wpis jest wyłączony w
+autostarcie; stan niezaznaczony oznacza, że wpis pozostaje włączony.
 
 ## Ustawienie języka
 

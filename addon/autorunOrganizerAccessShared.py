@@ -64,14 +64,6 @@ _POLISH = {
 	"Objects affected by the selected change": "Obiekty objęte wybraną zmianą",
 	"Changes that can be undone": "Zmiany, które można cofnąć",
 	"Startup entry type": "Typ wpisu autostartu",
-	# Context-menu state feedback.  These labels are included in the accessible
-	# name so the state is spoken even when a VCL/MSAA menu item does not expose
-	# a reliable CHECKED state to NVDA.
-	"checked": "zaznaczone",
-	"not checked": "niezaznaczone",
-	"partially checked": "cz\u0119\u015bciowo zaznaczone",
-	"selection state unavailable": "stan zaznaczenia niedost\u0119pny",
-	"{name}; {state}": "{name}; {state}",
 	# Runtime feedback.
 	"This control is not currently available in the application window.": (
 		"Ta kontrolka nie jest teraz dostępna w oknie programu."

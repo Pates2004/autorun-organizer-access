@@ -61,129 +61,6 @@ _INTERNAL_NAMES = {
 }
 
 
-# These are the stateful commands exposed by the classic startup-item context
-# menu.  Autorun Organizer has exposed them through both UI Automation and
-# the older VCL/MSAA accessibility bridge, depending on the Windows/NVDA
-# combination.  Keep the list caption-based so the handling works for both
-# providers and for the add-on's English/Polish relabeling.
-_STATEFUL_CONTEXT_COMMANDS = (
-	"Disable",
-	"Enable",
-	"Prevent Re-Enabling",
-	"Prevent Changing the Delay Time",
-	"Do Not Notify Me about Adding to the Startup",
-	"Enable Startup Checking",
-	"Hide System Applications",
-)
-
-
-def _menuCaption(name):
-	"""Return a menu caption without access markers or an accelerator suffix."""
-	value = str(name or "").replace("&", "")
-	return value.split("\t", 1)[0].strip()
-
-
-def _isMenuItemRole(role):
-	roles = {
-		getattr(controlTypes.Role, "MENUITEM", None),
-		getattr(controlTypes.Role, "CHECKMENUITEM", None),
-		getattr(controlTypes.Role, "RADIOMENUITEM", None),
-		# A few VCL/MSAA builds report an auto-check menu item as CHECKBOX.
-		getattr(controlTypes.Role, "CHECKBOX", None),
-	}
-	roles.discard(None)
-	return role in roles
-
-
-def _isStatefulContextMenuItem(obj, name=None):
-	if not _isMenuItemRole(getattr(obj, "role", None)):
-		return False
-	if name is None:
-		name = getattr(obj, "name", "")
-	caption = _menuCaption(name)
-	return any(_shared.matchesApplicationText(caption, command) for command in _STATEFUL_CONTEXT_COMMANDS)
-
-
-def _stateLabelFromStates(states):
-	"""Return an add-on message key for a check state, if one is available."""
-	stateType = getattr(controlTypes, "State", None)
-	checked = getattr(stateType, "CHECKED", None)
-	halfChecked = getattr(stateType, "HALFCHECKED", None)
-	checkable = getattr(stateType, "CHECKABLE", None)
-	if halfChecked is not None and halfChecked in states:
-		return "partially checked"
-	if checked is not None and checked in states:
-		return "checked"
-	if checkable is not None and checkable in states:
-		return "not checked"
-	return None
-
-
-def _stateLabel(obj, states=None):
-	"""Read a menu item's check state from NVDA or directly from UIA."""
-	if states is None:
-		try:
-			states = getattr(obj, "states", frozenset()) or frozenset()
-		except Exception:
-			states = frozenset()
-	label = _stateLabelFromStates(states)
-	if label:
-		return label
-	# Some VCL/MSAA objects expose the state through a boolean attribute rather
-	# than controlTypes.State.  Read these only when they are real booleans.
-	for attribute in ("isChecked", "checked"):
-		try:
-			value = getattr(obj, attribute)
-		except Exception:
-			continue
-		if isinstance(value, bool):
-			return "checked" if value else "not checked"
-	# UIA's Toggle pattern is not always copied into NVDA's state set for an
-	# older VCL menu provider.  The standard values are Off=0, On=1,
-	# Indeterminate=2.
-	try:
-		toggleState = obj.UIAElement.CurrentToggleState
-	except Exception:
-		toggleState = None
-	if toggleState == 1:
-		return "checked"
-	if toggleState == 2:
-		return "partially checked"
-	if toggleState == 0 and toggleState is not None:
-		return "not checked"
-	return None
-
-
-def _formatStatefulContextMenuName(obj, name):
-	"""Build the translated caption used by the menu-item overlay/fallback."""
-	translated = _menuCaption(_shared.translateApplicationText(name))
-	state = _stateLabel(obj) or "selection state unavailable"
-	return tr("{name}; {state}", name=translated, state=tr(state))
-
-
-class _StatefulContextMenuItem:
-	"""Make Autorun Organizer's checkable context commands unambiguous.
-
-	The classic application has two accessibility implementations.  The
-	provider normally gives NVDA CHECKED/CHECKABLE states, but on some systems
-	those states are present only after the menu has received focus.  Including
-	the state in the accessible name guarantees that it is spoken in either
-	case.  The native states are intentionally left untouched so NVDA can still
-	report state changes in the usual way.
-	"""
-
-	def _get_name(self):
-		try:
-			name = super()._get_name()
-		except (AttributeError, NotImplementedError):
-			name = ""
-		if not name:
-			return name
-		if not _isStatefulContextMenuItem(self, name=name):
-			return _shared.translateApplicationText(name)
-		return _formatStatefulContextMenuName(self, name)
-
-
 def _uiaClassName(obj):
 	"""Return the provider's UIA class, not the shared top-level HWND class."""
 	try:
@@ -463,18 +340,19 @@ class AppModule(appModuleHandler.AppModule):
 			pass
 
 	def isGoodUIAWindow(self, hwnd):
-		return True
+		# Autorun Organizer's standard popup menus expose names and checked
+		# states correctly through MSAA.  Forcing UIA on the system menu window
+		# (#32768) loses those states on some NVDA/Windows combinations.
+		return winUser.getClassName(hwnd) != "#32768"
+
+	def isBadUIAWindow(self, hwnd):
+		# Explicitly keep popup menus on the same MSAA path NVDA uses when the
+		# add-on is disabled. isGoodUIAWindow takes precedence, so both methods
+		# must agree for this window class.
+		return winUser.getClassName(hwnd) == "#32768"
 
 	def chooseNVDAObjectOverlayClasses(self, obj, clsList):
-		if not self.isSupportedVersion:
-			return
-		# The classic context menu can be exposed through UIA or through the
-		# legacy VCL/MSAA bridge.  Handle the caption/state fix before the UIA
-		# specific overlays below so both accessibility paths get the same result.
-		if _isStatefulContextMenuItem(obj):
-			clsList.insert(0, _StatefulContextMenuItem)
-			return
-		if not isinstance(obj, UIA):
+		if not self.isSupportedVersion or not isinstance(obj, UIA):
 			return
 		className = _uiaClassName(obj)
 		if className == "TSciterHostWindow":
@@ -533,17 +411,6 @@ class AppModule(appModuleHandler.AppModule):
 				and not (obj.name or "").strip()
 			):
 				obj.name = tr("Startup entry type")
-			# Stateful context-menu items use the overlay above.  Keep a fallback
-			# for an NVDA object implementation that does not apply overlay classes
-			# to legacy VCL/MSAA menu items.
-			if _isStatefulContextMenuItem(obj):
-				try:
-					hasOverlay = _StatefulContextMenuItem in type(obj).mro()
-				except (AttributeError, TypeError):
-					hasOverlay = False
-				if not hasOverlay:
-					obj.name = _formatStatefulContextMenuName(obj, obj.name)
-				return
 			name = (obj.name or "").strip()
 			if (
 				name

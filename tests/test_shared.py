@@ -38,9 +38,6 @@ class SharedLanguageTests(unittest.TestCase):
 			self.module.tr("Selected: {label}", language="pl", label="Wszystkie"),
 			"Wybrano: Wszystkie",
 		)
-		self.assertEqual(self.module.tr("checked", language="pl"), "zaznaczone")
-		self.assertEqual(self.module.tr("partially checked", language="pl"), "częściowo zaznaczone")
-		self.assertEqual(self.module.tr("selection state unavailable", language="pl"), "stan zaznaczenia niedostępny")
 
 	def test_application_text_is_translated_in_both_directions(self):
 		self.assertEqual(self.module.translateApplicationText("Settings", "pl"), "Ustawienia")

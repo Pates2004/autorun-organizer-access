@@ -2,17 +2,18 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<title>Autorun Organizer Access 1.3.0</title>
+	<title>Autorun Organizer Access 1.3.2</title>
 </head>
 <body>
-	<h1>Autorun Organizer Access 1.3.0</h1>
+	<h1>Autorun Organizer Access 1.3.2</h1>
 	<p>This add-on provides complete keyboard access to the classic Autorun Organizer 6.x interface. It has been directly tested with Autorun Organizer 6.32 and rejects the redesigned 7.x interface.</p>
 	<h2>Language</h2>
 	<p>Open <strong>NVDA Settings → Autorun Organizer Access</strong>. Choose the Windows display language (default), English, Polish, or the Autorun Organizer language. Polish Windows or an active Polish application translation selects Polish; unsupported languages fall back to English.</p>
 	<p>The setting controls add-on messages and application captions spoken by NVDA or shown in braille. It cannot change text drawn visually inside Autorun Organizer. Reopen an already displayed application menu or dialog after changing the setting.</p>
 	<h2>The startup-item action</h2>
 	<p>Autorun Organizer's Sciter switch does not expose its current state. It is therefore presented as the action button <strong>Enable or disable the selected startup item</strong>, not as a check box with the false state “unchecked”. After activation, NVDA explains that the resulting state is unavailable.</p>
-	<p>Stateful startup-item context-menu commands, such as <strong>Disable</strong> and <strong>Enable</strong>, include their state in the spoken name: <strong>checked</strong>, <strong>not checked</strong>, or <strong>selection state unavailable</strong>. This works with both the UI Automation and VCL/MSAA providers.</p>
+	<p>The classic popup menu uses its native MSAA provider, just as it does when the add-on is disabled. NVDA therefore preserves the real checked state of commands such as <strong>Disable</strong>. The add-on translates the caption without replacing the menu item's role or state.</p>
+	<p><strong>Disable</strong> is a checkable command, not a command whose caption changes to <strong>Run</strong>. Checked means that the selected entry is disabled at startup; unchecked means that it remains enabled.</p>
 	<h2>Commands</h2>
 	<p>All 22 commands are visible under NVDA menu → Preferences → Input Gestures → Autorun Organizer Access. Assigned keys are active only while Autorun Organizer 6.x has focus.</p>
 	<ul>

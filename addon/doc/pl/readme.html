@@ -2,17 +2,18 @@
 <html lang="pl">
 <head>
 	<meta charset="utf-8">
-	<title>Autorun Organizer Access 1.3.0</title>
+	<title>Autorun Organizer Access 1.3.2</title>
 </head>
 <body>
-	<h1>Autorun Organizer Access 1.3.0</h1>
+	<h1>Autorun Organizer Access 1.3.2</h1>
 	<p>Dodatek zapewnia pełną obsługę klawiaturą klasycznego interfejsu Autorun Organizer 6.x. Został bezpośrednio przetestowany z wersją 6.32 i odrzuca przeprojektowany interfejs 7.x.</p>
 	<h2>Język</h2>
 	<p>Otwórz <strong>Ustawienia NVDA → Autorun Organizer Access</strong>. Wybierz język systemu Windows (domyślnie), angielski, polski lub język Autorun Organizer. Polski system lub aktywne polskie tłumaczenie programu wybiera polski; nieobsługiwane języki przechodzą na angielski.</p>
 	<p>Ustawienie steruje komunikatami dodatku i nazwami programu odczytywanymi przez NVDA lub wyświetlanymi w brajlu. Nie zmienia napisów widocznych w Autorun Organizer. Po zmianie języka otwórz ponownie widoczne menu lub okno programu.</p>
 	<h2>Działanie dotyczące wpisu autostartu</h2>
 	<p>Przełącznik Scitera nie udostępnia bieżącego stanu. Jest więc przedstawiany jako przycisk <strong>Włącz lub wyłącz wybrany element autostartu</strong>, a nie jako pole wyboru z fałszywym stanem „nieoznaczone”. Po aktywacji NVDA wyjaśnia, że wynikowy stan nie jest dostępny.</p>
-	<p>Stanowe polecenia menu kontekstowego elementu autostartu, takie jak <strong>Wyłącz</strong> i <strong>Włącz</strong>, są odczytywane wraz ze stanem: <strong>zaznaczone</strong>, <strong>niezaznaczone</strong> albo <strong>stan zaznaczenia niedostępny</strong>. Obsługiwane są oba interfejsy dostępności programu: UI Automation i VCL/MSAA.</p>
+	<p>Klasyczne menu kontekstowe korzysta z natywnego interfejsu MSAA, tak samo jak po wyłączeniu dodatku. NVDA zachowuje dzięki temu rzeczywisty stan zaznaczenia pozycji takich jak <strong>Wyłącz</strong>. Dodatek tłumaczy napis bez zastępowania roli ani stanu pozycji menu.</p>
+	<p><strong>Wyłącz</strong> jest poleceniem przełączanym, a jego nazwa nie zmienia się na <strong>Uruchom</strong>. Stan zaznaczony oznacza, że wybrany wpis jest wyłączony w autostarcie; stan niezaznaczony oznacza, że wpis pozostaje włączony.</p>
 	<h2>Polecenia</h2>
 	<p>Wszystkie 22 polecenia są widoczne w menu NVDA → Ustawienia → Zdarzenia wejścia → Autorun Organizer Access. Przypisane klawisze działają tylko w Autorun Organizer 6.x.</p>
 	<ul>

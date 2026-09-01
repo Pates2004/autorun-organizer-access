@@ -18,12 +18,15 @@ The add-on targets the entire classic 6.x family and has been tested directly wi
 
 ## Context-menu state
 
-When a startup item context menu contains a stateful command such as **Disable**
-or **Enable**, NVDA now speaks the state in the item name, for example
-**Disable; checked** or **Disable; not checked**.  This works with both the
-UI Automation and VCL/MSAA accessibility providers used by Autorun Organizer
-6.x.  If the program does not expose a state for that command, the add-on says
-**selection state unavailable** rather than guessing.
+The classic popup menu is deliberately handled through its native MSAA
+provider—the same path NVDA uses when the add-on is disabled. This preserves
+the real checked or unchecked state of commands such as **Disable**. The add-on
+translates the exposed caption but does not replace the menu item's role or
+state.
+
+**Disable** is a checkable command, not a command whose caption changes to
+**Run**. Checked means that the selected entry is disabled at startup;
+unchecked means that it remains enabled at startup.
 
 ## Language setting
 

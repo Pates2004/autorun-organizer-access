@@ -83,6 +83,7 @@ def load_module():
 		"ui": types.SimpleNamespace(message=lambda text: None),
 		"winUser": types.SimpleNamespace(
 			getCursorPos=lambda: (10, 20),
+			getClassName=lambda hwnd: "#32768" if hwnd == 32768 else "TAutorunOrganizerMainForm",
 			setCursorPos=lambda x, y: None,
 			isWindowVisible=lambda hwnd: True,
 		),
@@ -248,69 +249,28 @@ class AppModuleTests(unittest.TestCase):
 		self.app.event_NVDAObject_init(obj)
 		self.assertEqual(obj.name, "")
 
-	def test_context_menu_items_keep_and_announce_checked_state(self):
+	def test_standard_popup_menu_uses_native_msaa_provider(self):
+		self.assertFalse(self.app.isGoodUIAWindow(32768))
+		self.assertTrue(self.app.isBadUIAWindow(32768))
+		self.assertTrue(self.app.isGoodUIAWindow(1))
+		self.assertFalse(self.app.isBadUIAWindow(1))
+
+	def test_context_menu_translation_preserves_native_checked_states(self):
 		obj = DummyObject(
-			"TMenuItem",
+			"",
 			name="Disable",
 			role=Role.MENUITEM,
 			states={State.CHECKABLE, State.CHECKED},
 		)
-		classes = []
-		self.app.chooseNVDAObjectOverlayClasses(obj, classes)
-		self.assertEqual(classes[0], self.module._StatefulContextMenuItem)
-		self.app.event_NVDAObject_init(obj)
-		self.assertEqual(obj.name, "Disable; checked")
-		# Build the same overlay MRO NVDA uses and verify the spoken label.
-		class Overlay(self.module._StatefulContextMenuItem, DummyObject):
-			pass
-
-		overlay = Overlay("TMenuItem", name="Disable", role=Role.MENUITEM, states=obj.states)
-		self.assertEqual(overlay._get_name(), "Disable; checked")
-
-	def test_context_menu_overlay_does_not_recurse_through_nvda_name_property(self):
-		class ProviderObject(DummyObject):
-			@property
-			def name(self):
-				return self._get_name()
-
-			@name.setter
-			def name(self, value):
-				self.provider_name = value
-
-			def _get_name(self):
-				return self.provider_name
-
-		class Overlay(self.module._StatefulContextMenuItem, ProviderObject):
-			pass
-
-		obj = Overlay("TMenuItem", name="Disable", role=Role.MENUITEM, states={State.CHECKABLE})
-		self.assertEqual(obj.name, "Disable; not checked")
-
-	def test_context_menu_items_announce_unchecked_and_unknown_states(self):
-		class Overlay(self.module._StatefulContextMenuItem, DummyObject):
-			pass
-
-		unchecked = Overlay(
-			"TMenuItem",
-			name="Disable",
-			role=Role.CHECKMENUITEM,
-			states={State.CHECKABLE},
-		)
-		unknown = Overlay("TMenuItem", name="Disable", role=Role.MENUITEM)
-		self.assertEqual(unchecked._get_name(), "Disable; not checked")
-		self.assertEqual(unknown._get_name(), "Disable; selection state unavailable")
-
-	def test_context_menu_translation_handles_accelerators(self):
-		class Overlay(self.module._StatefulContextMenuItem, DummyObject):
-			pass
-
-		obj = Overlay(
-			"TMenuItem",
-			name="&Disable\tCtrl+D",
-			role=Role.MENUITEM,
-			states={State.CHECKABLE, State.CHECKED},
-		)
-		self.assertEqual(obj._get_name(), "Disable; checked")
+		originalResolver = self.module._shared.resolveLanguage
+		self.module._shared.resolveLanguage = lambda *args, **kwargs: "pl"
+		try:
+			self.app.event_NVDAObject_init(obj)
+		finally:
+			self.module._shared.resolveLanguage = originalResolver
+		self.assertEqual(obj.name, "Wyłącz")
+		self.assertEqual(obj.states, {State.CHECKABLE, State.CHECKED})
+		self.assertEqual(obj.role, Role.MENUITEM)
 
 	def test_filter_selector_cycles(self):
 		selector = object.__new__(self.module._TopFilterSelector)
